@@ -229,6 +229,7 @@ jobs:
   create-github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [prepare, build]
     if: github.actor == github.repository_owner
     environment:
@@ -326,6 +327,7 @@ jobs:
   publish-python-package:
     name: Publish Python Package
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [prepare, build, quality-checks]
     if: github.actor == github.repository_owner
     environment:
