@@ -123,11 +123,18 @@ jobs:
             cat "target/${{ matrix.target }}/release/${{ matrix.artifact_name }}.sha256"
           fi
 
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          mkdir -p /tmp/artifacts
+          cp "target/${{ matrix.target }}/release/${{ matrix.artifact_name }}" /tmp/artifacts/
+          cp "target/${{ matrix.target }}/release/${{ matrix.artifact_name }}.sha256" /tmp/artifacts/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.asset_name }}
-          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}*
+          path: /tmp/artifacts/
           if-no-files-found: error
 
   # Publish: Upload to crates.io (optional - only if CARGO_TOKEN is configured)
