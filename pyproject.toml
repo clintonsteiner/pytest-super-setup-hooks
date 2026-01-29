@@ -24,6 +24,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Quality Assurance",
 ]
+dependencies = [
+    "pytest>=8.3.5",
+]
 
 [project.urls]
 Homepage = "https://github.com/clintonsteiner/pytest-super-setup-hooks"
