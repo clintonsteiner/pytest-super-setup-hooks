@@ -160,37 +160,49 @@ jobs:
           awk "/^\[$VERSION\]/,/^\[.*\]|^$/" CHANGELOG.md | head -n -1 > release_notes.md
           cat release_notes.md
 
-      - name: Verify artifacts
+      - name: Create Release and Upload Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== Artifacts directory structure ==="
-          find . -type f \( -name "pytest-super-hooks*" -o -name "*.sha256" \) | sort
-          echo ""
-          echo "=== File sizes and validity ==="
-          for f in pytest-super-hooks-*/pytest-super-hooks* pytest-super-hooks-windows-x86_64.exe/*; do
-            if [ -f "$f" ]; then
-              size=$(stat -f%z "$f" 2>/dev/null || stat -c%s "$f" 2>/dev/null)
-              echo "$f: $size bytes"
+          set -e
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          RELEASE_TAG="v${VERSION}"
+          REPO="${{ github.repository }}"
+
+          echo "Processing release for ${RELEASE_TAG}..."
+
+          # Try to get existing release
+          EXISTING_RELEASE=$(curl -s \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}" || echo "{}")
+
+          RELEASE_ID=$(echo "$EXISTING_RELEASE" | jq -r '.id // empty')
+
+          if [ -z "$RELEASE_ID" ]; then
+            # Create new release
+            echo "Creating new release..."
+            RELEASE_BODY=$(cat release_notes.md)
+
+            RELEASE_RESPONSE=$(curl -s -X POST \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/${REPO}/releases" \
+              -d "{\"tag_name\":\"${RELEASE_TAG}\",\"name\":\"Release ${VERSION}\",\"body\":\"${RELEASE_BODY}\",\"draft\":false,\"prerelease\":false}")
+
+            RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
+
+            if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+              echo "ERROR: Failed to create release"
+              echo "$RELEASE_RESPONSE" | jq .
+              exit 1
             fi
-          done
+            echo "✓ Release created with ID: ${RELEASE_ID}"
+          else
+            echo "✓ Using existing release with ID: ${RELEASE_ID}"
+          fi
 
-      - name: Create Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ needs.validate-version.outputs.version }}"
-
-          # Create release first
-          gh release create "v$VERSION" \
-            --title "Release $VERSION" \
-            --notes-file release_notes.md
-
-      - name: Upload release assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ needs.validate-version.outputs.version }}"
-
-          # Upload each artifact individually with better error handling
+          # Upload each artifact
           for file in pytest-super-hooks-linux-x86_64/pytest-super-hooks \
                       pytest-super-hooks-linux-x86_64/pytest-super-hooks.sha256 \
                       pytest-super-hooks-macos-x86_64/pytest-super-hooks \
@@ -199,11 +211,21 @@ jobs:
                       pytest-super-hooks-macos-aarch64/pytest-super-hooks.sha256 \
                       pytest-super-hooks-windows-x86_64.exe/pytest-super-hooks.exe \
                       pytest-super-hooks-windows-x86_64.exe/pytest-super-hooks.exe.sha256; do
-            if [ -f "$file" ]; then
-              echo "Uploading: $file"
-              gh release upload "v$VERSION" "$file" --clobber
-            else
+            if [ ! -f "$file" ]; then
               echo "ERROR: File not found: $file"
               exit 1
             fi
+
+            filename=$(basename "$file")
+            echo "Uploading: $filename"
+
+            curl -s -X POST \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$file" \
+              "https://uploads.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?name=${filename}" > /dev/null
+
+            echo "✓ Uploaded: $filename"
           done
+
+          echo "✓ Release complete!"
