@@ -1,4 +1,4 @@
-.PHONY: help release-patch release-minor release-major test check fmt clippy clean
+.PHONY: help release-patch release-minor release-major test check fmt clippy clean _check-clean
 
 # Colors for output
 RESET := \033[0m
@@ -20,33 +20,6 @@ help:
 	@echo "  $(YELLOW)clippy$(RESET)          - Run clippy linter"
 	@echo "  $(YELLOW)clean$(RESET)           - Remove build artifacts"
 
-# Get current version from Cargo.toml
-CURRENT_VERSION := $(shell grep '^version' Cargo.toml | head -1 | sed 's/version = "\([^"]*\)".*/\1/')
-
-release-patch: _check-clean
-	@$(call _release,patch)
-
-release-minor: _check-clean
-	@$(call _release,minor)
-
-release-major: _check-clean
-	@$(call _release,major)
-
-define _release
-	CURRENT=$(CURRENT_VERSION); \
-	MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
-	MINOR=$$(echo $$CURRENT | cut -d. -f2); \
-	PATCH=$$(echo $$CURRENT | cut -d. -f3); \
-	if [ "$1" = "patch" ]; then \
-		NEW=$$MAJOR.$$MINOR.$$(($$PATCH + 1)); \
-	elif [ "$1" = "minor" ]; then \
-		NEW=$$MAJOR.$$(($$MINOR + 1)).0; \
-	elif [ "$1" = "major" ]; then \
-		NEW=$$(($$MAJOR + 1)).0.0; \
-	fi; \
-	$(MAKE) _release-impl VERSION=$$NEW CURRENT=$(CURRENT_VERSION)
-endef
-
 _check-clean:
 	@if [ -n "$$(git status --porcelain)" ]; then \
 		echo "$(YELLOW)Error: Working directory is not clean$(RESET)"; \
@@ -55,33 +28,40 @@ _check-clean:
 	fi
 	@echo "✓ Working directory is clean"
 
+release-patch: _check-clean
+	@bash -c 'set -e; \
+		CURRENT=$$(grep "^version" Cargo.toml | head -1 | sed "s/version = \"\([^\"]*\)\".*/\1/"); \
+		MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
+		MINOR=$$(echo $$CURRENT | cut -d. -f2); \
+		PATCH=$$(echo $$CURRENT | cut -d. -f3); \
+		NEW=$$MAJOR.$$MINOR.$$(($$PATCH + 1)); \
+		$(MAKE) _release-impl VERSION=$$NEW CURRENT=$$CURRENT'
+
+release-minor: _check-clean
+	@bash -c 'set -e; \
+		CURRENT=$$(grep "^version" Cargo.toml | head -1 | sed "s/version = \"\([^\"]*\)\".*/\1/"); \
+		MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
+		MINOR=$$(echo $$CURRENT | cut -d. -f2); \
+		NEW=$$MAJOR.$$(($$MINOR + 1)).0; \
+		$(MAKE) _release-impl VERSION=$$NEW CURRENT=$$CURRENT'
+
+release-major: _check-clean
+	@bash -c 'set -e; \
+		CURRENT=$$(grep "^version" Cargo.toml | head -1 | sed "s/version = \"\([^\"]*\)\".*/\1/"); \
+		MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
+		NEW=$$(($$MAJOR + 1)).0.0; \
+		$(MAKE) _release-impl VERSION=$$NEW CURRENT=$$CURRENT'
+
 _release-impl:
-	@if [ -z "$(VERSION)" ]; then \
-		echo "Error: VERSION not set"; \
+	@if [ -z "$(VERSION)" ] || [ -z "$(CURRENT)" ]; then \
+		echo "Error: VERSION and CURRENT must be set"; \
 		exit 1; \
 	fi
-	@echo "$(GREEN)Bumping version from $(CURRENT_VERSION) to $(VERSION)$(RESET)"
-	@# Update Cargo.toml
-	@sed -i '' 's/^version = "$(CURRENT_VERSION)"/version = "$(VERSION)"/' Cargo.toml
-	@echo "✓ Updated Cargo.toml"
-	@# Update CHANGELOG.md - add new unreleased section and promote current unreleased
-	@sed -i '' \
-		'/^## \[Unreleased\]/a\ \
-\
-## [$(VERSION)] - '$$(date +%Y-%m-%d)'\
-' CHANGELOG.md
-	@# Update version links at the bottom
-	@sed -i '' \
-		's|\[Unreleased\]: https://github.com/|\[Unreleased\]: https://github.com/|' CHANGELOG.md
-	@sed -i '' \
-		"/\[Unreleased\]:/a\ \
-[$(VERSION)]: https://github.com/yourusername/pytest-super-setup-hooks/releases/tag/v$(VERSION)" CHANGELOG.md
-	@echo "✓ Updated CHANGELOG.md"
-	@# Commit version changes
+	@echo "$(GREEN)Bumping version from $(CURRENT) to $(VERSION)$(RESET)"
+	@bash scripts/update-release.sh "$(CURRENT)" "$(VERSION)"
 	@git add Cargo.toml CHANGELOG.md
 	@git commit -m "Bump version to $(VERSION)"
 	@echo "✓ Created version commit"
-	@# Create annotated tag
 	@git tag -a v$(VERSION) -m "Release version $(VERSION)"
 	@echo "✓ Created git tag v$(VERSION)"
 	@echo ""
