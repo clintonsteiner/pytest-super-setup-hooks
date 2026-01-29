@@ -12,7 +12,32 @@ def get_binary_path() -> Path:
     """Get path to the Rust binary."""
     binary_name = "pytest-super-hooks.exe" if sys.platform == "win32" else "pytest-super-hooks"
 
-    # First, try to use bundled binary from package data
+    # First, check if we're in the repository and have a compiled binary (development)
+    # This takes priority because it's platform-specific
+    repo_root = Path(__file__).parent.parent.parent
+
+    local_paths = [
+        repo_root / "target" / "release" / binary_name,
+        repo_root / "target" / "debug" / binary_name,
+    ]
+
+    for path in local_paths:
+        if path.exists():
+            return path
+
+    # Second, check if binary is in PATH (user has installed via cargo)
+    try:
+        result = subprocess.run(
+            ["which" if sys.platform != "win32" else "where", binary_name],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return Path(result.stdout.strip())
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+
+    # Third, try to use bundled binary from package data (only if above failed)
     try:
         # Python 3.9+
         if sys.version_info >= (3, 9):
@@ -31,34 +56,11 @@ def get_binary_path() -> Path:
     except Exception:
         pass
 
-    # Second, check if we're in the repository and have a compiled binary (development)
-    repo_root = Path(__file__).parent.parent.parent
-
-    local_paths = [
-        repo_root / "target" / "release" / binary_name,
-        repo_root / "target" / "debug" / binary_name,
-    ]
-
-    for path in local_paths:
-        if path.exists():
-            return path
-
-    # Third, check if binary is in PATH (user has installed via cargo)
-    try:
-        result = subprocess.run(
-            ["which" if sys.platform != "win32" else "where", binary_name],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            return Path(result.stdout.strip())
-    except (subprocess.SubprocessError, FileNotFoundError):
-        pass
-
     # Binary not found
     raise RuntimeError(
         f"pytest-super-hooks binary not found.\n"
-        f"Install it with: cargo install --path .\n"
+        f"In development: cargo build --release\n"
+        f"Or install with: cargo install --path .\n"
         f"Or ensure it's available in your PATH."
     )
 

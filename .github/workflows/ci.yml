@@ -59,10 +59,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@v1
+      - name: Build Rust binary
+        run: cargo build --release
       - name: Sync dependencies and install package
         run: uv sync
       - name: Run Python tests

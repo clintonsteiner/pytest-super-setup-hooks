@@ -12,6 +12,7 @@ __pycache__/
 dist/
 build/
 *.whl
+src/pytest_super_hooks/bin/
 
 # Virtual environments
 .venv/
