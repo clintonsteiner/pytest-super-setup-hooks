@@ -23,19 +23,29 @@ help:
 # Get current version from Cargo.toml
 CURRENT_VERSION := $(shell grep '^version' Cargo.toml | head -1 | sed 's/version = "\([^"]*\)".*/\1/')
 
-# Parse version components
-VERSION_MAJOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f1)
-VERSION_MINOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f2)
-VERSION_PATCH := $(shell echo $(CURRENT_VERSION) | cut -d. -f3)
+release-patch: _check-clean
+	@$(call _release,patch)
 
-# Calculate new versions
-NEW_PATCH_VERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$$(( $(VERSION_PATCH) + 1 ))
-NEW_MINOR_VERSION := $(VERSION_MAJOR).$$(( $(VERSION_MINOR) + 1 )).0
-NEW_MAJOR_VERSION := $$(( $(VERSION_MAJOR) + 1 )).0.0
+release-minor: _check-clean
+	@$(call _release,minor)
 
-release-patch: _check-clean _release-impl VERSION=$(NEW_PATCH_VERSION)
-release-minor: _check-clean _release-impl VERSION=$(NEW_MINOR_VERSION)
-release-major: _check-clean _release-impl VERSION=$(NEW_MAJOR_VERSION)
+release-major: _check-clean
+	@$(call _release,major)
+
+define _release
+	CURRENT=$(CURRENT_VERSION); \
+	MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
+	MINOR=$$(echo $$CURRENT | cut -d. -f2); \
+	PATCH=$$(echo $$CURRENT | cut -d. -f3); \
+	if [ "$1" = "patch" ]; then \
+		NEW=$$MAJOR.$$MINOR.$$(($$PATCH + 1)); \
+	elif [ "$1" = "minor" ]; then \
+		NEW=$$MAJOR.$$(($$MINOR + 1)).0; \
+	elif [ "$1" = "major" ]; then \
+		NEW=$$(($$MAJOR + 1)).0.0; \
+	fi; \
+	$(MAKE) _release-impl VERSION=$$NEW CURRENT=$(CURRENT_VERSION)
+endef
 
 _check-clean:
 	@if [ -n "$$(git status --porcelain)" ]; then \
