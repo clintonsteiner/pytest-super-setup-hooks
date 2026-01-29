@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-01-29
+
 ## [0.11.2] - 2026-01-29
 
 ## [0.11.1] - 2026-01-29
@@ -73,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub release artifacts
 
 [Unreleased]: https://github.com/yourusername/pytest-super-setup-hooks/compare/v0.1.0...HEAD
+[0.11.3]: https://github.com/clintonsteiner/pytest-super-setup-hooks/releases/tag/v0.11.3
 [0.11.2]: https://github.com/clintonsteiner/pytest-super-setup-hooks/releases/tag/v0.11.2
 [0.11.1]: https://github.com/yourusername/pytest-super-setup-hooks/releases/tag/v0.11.1
 [0.11.0]: https://github.com/yourusername/pytest-super-setup-hooks/releases/tag/v0.11.0
