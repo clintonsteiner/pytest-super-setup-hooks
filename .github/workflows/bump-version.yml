@@ -75,17 +75,34 @@ jobs:
         run: |
           make release-${{ github.event.inputs.bump_type }}
 
-      - name: Push changes and tag
-        run: |
-          git push origin HEAD:${{ github.ref }}
-          git push origin --tags
-
-      - name: Create summary
+      - name: Get version and verify tag
+        id: version_info
         run: |
           VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\([^"]*\)".*/\1/')
           TAG="v${VERSION}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+          echo "Verifying local tag: ${TAG}"
+          git tag -l "${TAG}"
+
+      - name: Push to current branch
+        run: |
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "Pushing to branch: ${BRANCH}"
+          git push origin "${BRANCH}"
+
+      - name: Push tag
+        run: |
+          TAG="${{ steps.version_info.outputs.TAG }}"
+          echo "Pushing tag: ${TAG}"
+          git push origin "${TAG}"
+
+      - name: Create summary
+        run: |
+          VERSION="${{ steps.version_info.outputs.VERSION }}"
+          TAG="${{ steps.version_info.outputs.TAG }}"
           echo "✅ Version bumped to: ${VERSION}"
-          echo "✅ Tag created: ${TAG}"
+          echo "✅ Tag created and pushed: ${TAG}"
           echo ""
           echo "To monitor the release:"
           echo "- Watch: https://github.com/${{ github.repository }}/actions"
