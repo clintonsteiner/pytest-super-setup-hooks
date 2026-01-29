@@ -63,8 +63,8 @@ jobs:
         with:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@v1
-      - name: Install Python package and dependencies
-        run: uv pip install -e .
+      - name: Sync dependencies and install package
+        run: uv sync
       - name: Run Python tests
         run: uv run pytest tests/test_python_wrapper.py -v
 
