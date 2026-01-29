@@ -17,6 +17,13 @@ Built on [Ruff's Python parser](https://github.com/astral-sh/ruff) for fast, rel
 ### Installation (for standalone usage)
 
 ```bash
+# Option 1: Install from PyPI (recommended)
+pip install pytest-super-hooks
+
+# Option 2: Install from source as Python package
+pip install .
+
+# Option 3: Install via cargo
 cargo install --path .
 ```
 
@@ -32,9 +39,9 @@ pytest-super-hooks --fix test_*.py
 
 ### Use as Pre-Commit Hook
 
-Add to `.pre-commit-config.yaml` (pre-commit will automatically build and run the binary):
+Simply add to `.pre-commit-config.yaml`:
 
-**Option 1: Check mode (fail on violations)**
+**Check mode (fail on violations):**
 ```yaml
 - repo: https://github.com/clintonsteiner/pytest-super-setup-hooks
   rev: v0.11.0
@@ -42,7 +49,7 @@ Add to `.pre-commit-config.yaml` (pre-commit will automatically build and run th
     - id: pytest-super-setup
 ```
 
-**Option 2: Auto-fix mode (automatically fix violations)**
+**Or auto-fix mode (automatically fix violations):**
 ```yaml
 - repo: https://github.com/clintonsteiner/pytest-super-setup-hooks
   rev: v0.11.0
@@ -50,9 +57,14 @@ Add to `.pre-commit-config.yaml` (pre-commit will automatically build and run th
     - id: pytest-super-setup-fix
 ```
 
-Available hook IDs:
+That's it! Available hook IDs:
 - `pytest-super-setup` - Check mode (report violations, exit with code 1)
 - `pytest-super-setup-fix` - Auto-fix mode (automatically correct violations)
+
+How it works:
+- Pre-commit automatically installs the Python package with bundled Rust binary
+- No cargo or Rust installation required
+- Works on macOS, Linux, and Windows
 
 ## Examples
 
@@ -97,6 +109,29 @@ class TestExample(unittest.TestCase):
 - **Auto-fix**: Can automatically rename methods and add super() calls
 - **Smart**: Skips pass-only methods, handles decorators, docstrings, async methods
 - **Recursive**: Checks methods in nested classes
+
+## Demo
+
+Try the tool on example test files in the `demo/` directory:
+
+```bash
+# Check violations
+cargo run --release -- demo/test_violations.py
+
+# Auto-fix violations
+cargo run --release -- --fix demo/test_violations.py
+
+# Verify fixes applied
+cargo run --release -- demo/test_violations.py
+```
+
+The `demo/` directory includes:
+- **test_correct.py** - Passing tests (correct usage)
+- **test_violations.py** - Multiple violations to demonstrate detection and fixing
+- **test_django_style.py** - Django TestCase patterns
+- **test_edge_cases.py** - Special cases (decorators, docstrings, nested classes)
+
+See [demo/README.md](demo/README.md) for more details.
 
 ## Development
 

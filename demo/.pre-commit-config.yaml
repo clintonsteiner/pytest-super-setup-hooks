@@ -1,0 +1,5 @@
+repos:
+  - repo: https://github.com/clintonsteiner/pytest-super-setup-hooks
+    rev: v0.11.2
+    hooks:
+      - id: pytest-super-setup
