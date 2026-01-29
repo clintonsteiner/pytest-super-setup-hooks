@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-01-29
+
 ### Added
 - Multi-platform CI/CD pipeline (Linux, macOS, Windows)
 - Automatic binary releases for all platforms
@@ -39,4 +41,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub release artifacts
 
 [Unreleased]: https://github.com/yourusername/pytest-super-setup-hooks/compare/v0.1.0...HEAD
+[0.2.0]: https://github.com/yourusername/pytest-super-setup-hooks/releases/tag/v0.2.0
 [0.1.0]: https://github.com/yourusername/pytest-super-setup-hooks/releases/tag/v0.1.0
