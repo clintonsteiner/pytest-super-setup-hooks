@@ -1,10 +1,14 @@
 name: Release
 
-# Only triggered by pushing a git tag matching v*
+# Only triggered by bump-version workflow via gh workflow run
+# Direct pushes or manual triggers are blocked
 on:
-  push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      triggered_by_bump:
+        description: 'Internal flag - set by bump-version workflow only'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,8 +19,26 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  # Verify this was triggered by bump-version workflow
+  verify-trigger:
+    name: Verify Trigger Source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if triggered by bump-version
+        run: |
+          TRIGGERED_BY="${{ github.event.inputs.triggered_by_bump }}"
+
+          if [ "$TRIGGERED_BY" != "bump-version" ]; then
+            echo "❌ Release workflow can only be triggered by bump-version"
+            echo "Input received: $TRIGGERED_BY"
+            exit 1
+          fi
+
+          echo "✅ Verified: Triggered by bump-version workflow"
+
   # Guard: Validate version consistency
   validate-version:
+    needs: verify-trigger
     name: Validate Version
     runs-on: ubuntu-latest
     outputs:
