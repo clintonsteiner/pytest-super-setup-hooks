@@ -1,0 +1,92 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    name: Bump Version and Create Tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check admin permissions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ACTOR="${{ github.actor }}"
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.repository }}"
+
+          echo "Checking admin access for: ${ACTOR}"
+
+          # Repository owner is always admin
+          if [ "$ACTOR" = "$OWNER" ]; then
+            echo "✅ User is repository owner (admin)"
+            exit 0
+          fi
+
+          # Check if user is a collaborator with admin permission
+          RESPONSE=$(curl -s -w "\n%{http_code}" -H "Authorization: token ${GITHUB_TOKEN}" \
+            "https://api.github.com/repos/${REPO}/collaborators/${ACTOR}/permission")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          ROLE=$(echo "$BODY" | jq -r '.permission // empty')
+
+          if [ "$HTTP_CODE" = "404" ]; then
+            echo "❌ User is not a collaborator"
+            exit 1
+          fi
+
+          if [ "$ROLE" != "admin" ]; then
+            echo "❌ Only repository admins can run this workflow"
+            echo "Current role: ${ROLE} (required: admin)"
+            exit 1
+          fi
+
+          echo "✅ Admin access verified (role: ${ROLE})"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version with Makefile
+        run: |
+          make release-${{ github.event.inputs.bump_type }}
+
+      - name: Push changes and tag
+        run: |
+          git push origin HEAD:${{ github.ref }}
+          git push origin --tags
+
+      - name: Create summary
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\([^"]*\)".*/\1/')
+          TAG="v${VERSION}"
+          echo "✅ Version bumped to: ${VERSION}"
+          echo "✅ Tag created: ${TAG}"
+          echo ""
+          echo "To monitor the release:"
+          echo "- Watch: https://github.com/${{ github.repository }}/actions"
+          echo "- Release: https://github.com/${{ github.repository }}/releases/tag/${TAG}"
