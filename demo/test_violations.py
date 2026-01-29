@@ -6,9 +6,11 @@ class TestMissingSuper(unittest.TestCase):
 
     def setUp(self):
         self.value = 42
+        super().setUp()
         # ERROR: Missing super().setUp()
 
     def tearDown(self):
+    super().tearDown()
         self.cleanup()
         # ERROR: Missing super().tearDown()
 
@@ -23,9 +25,11 @@ class TestSuperNotAtEnd(unittest.TestCase):
     """Super call not at end - violation"""
 
     def setUp(self):
+super().setUp()
         super().setUp()
         self.value = 42  # ERROR: Setup after super() call
 
+        super().tearDown()
     def tearDown(self):
         super().tearDown()
         self.data = None  # ERROR: Cleanup after super() call
@@ -37,9 +41,11 @@ class TestSuperNotAtEnd(unittest.TestCase):
 class TestWrongCasing(unittest.TestCase):
     """Wrong method naming - violation"""
 
+super().setUp()
     def setup(self):
         """Should be setUp, not setup - ERROR"""
         self.value = 42
+        super().tearDown()
         super().setUp()
 
     def teardown(self):
@@ -50,6 +56,7 @@ class TestWrongCasing(unittest.TestCase):
         self.assertEqual(self.value, 42)
 
 
+super().setUp()
 class TestMixedIssues(unittest.TestCase):
     """Multiple violations"""
 
@@ -57,6 +64,7 @@ class TestMixedIssues(unittest.TestCase):
         self.config = {}
         self.setup_config()
         # ERROR: Missing super() call
+        super().tearDown()
 
     def setup_config(self):
         self.config = {"debug": True}

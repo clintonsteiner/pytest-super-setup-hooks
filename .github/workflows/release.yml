@@ -341,6 +341,7 @@ jobs:
           cp downloaded-binary/pytest-super-hooks src/pytest_super_hooks/bin/
           chmod +x src/pytest_super_hooks/bin/pytest-super-hooks
           ls -lh src/pytest_super_hooks/bin/
+          echo "Binary prepared for packaging"
 
       - name: Set up Python
         uses: actions/setup-python@v4
