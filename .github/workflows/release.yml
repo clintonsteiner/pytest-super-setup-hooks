@@ -63,12 +63,12 @@ jobs:
           VERSION="${MAJOR}.${MINOR}.${PATCH}"
 
           if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "❌ Failed to calculate version"
+            echo "Failed to calculate version"
             exit 1
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "✅ Calculated new version: $VERSION ($BUMP_TYPE bump)"
+          echo "Calculated new version: $VERSION ($BUMP_TYPE bump)"
 
       - name: Configure git
         run: |
@@ -81,7 +81,7 @@ jobs:
           CURRENT=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\([^"]*\)".*/\1/')
           sed -i.bak "s/^version = \"$CURRENT\"/version = \"$VERSION\"/" Cargo.toml
           rm -f Cargo.toml.bak
-          echo "✅ Updated Cargo.toml to version $VERSION"
+          echo "Updated Cargo.toml to version $VERSION"
 
       - name: Update CHANGELOG.md
         run: |
@@ -113,7 +113,7 @@ jobs:
           ' CHANGELOG.md > CHANGELOG.md.tmp
           mv CHANGELOG.md.tmp CHANGELOG.md
 
-          echo "✅ Updated CHANGELOG.md"
+          echo "Updated CHANGELOG.md"
 
       - name: Commit and tag
         run: |
@@ -122,17 +122,17 @@ jobs:
 
           git add Cargo.toml CHANGELOG.md
           git commit -m "Release version $VERSION"
-          echo "✅ Created commit"
+          echo "Created commit"
 
           git tag -a "$TAG" -m "Release version $VERSION"
-          echo "✅ Created tag: $TAG"
+          echo "Created tag: $TAG"
 
       - name: Push to repository
         run: |
           BRANCH=$(git rev-parse --abbrev-ref HEAD)
           git push origin "$BRANCH"
           git push origin --tags
-          echo "✅ Pushed commits and tags"
+          echo "Pushed commits and tags"
 
   # Guard: Run all quality checks
   quality-checks:
@@ -266,9 +266,9 @@ jobs:
               echo "$RELEASE_RESPONSE" | jq .
               exit 1
             fi
-            echo "✓ Release created with ID: ${RELEASE_ID}"
+            echo "Release created with ID: ${RELEASE_ID}"
           else
-            echo "✓ Using existing release with ID: ${RELEASE_ID}"
+            echo "Using existing release with ID: ${RELEASE_ID}"
           fi
 
           # Upload each artifact
@@ -294,7 +294,7 @@ jobs:
               --data-binary @"$file" \
               "https://uploads.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?name=${filename}" > /dev/null
 
-            echo "✓ Uploaded: $filename"
+            echo "Uploaded: $filename"
           done
 
-          echo "✓ Release complete!"
+          echo "Release complete!"

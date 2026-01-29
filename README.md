@@ -6,9 +6,9 @@ A fast, Rust-based pre-commit hook that enforces correct `setUp` / `tearDown` me
 
 This tool automatically checks Python test classes to ensure:
 
-✅ `setUp` and `tearDown` methods **call `super().setUp()` / `super().tearDown()` as the last statement**
-✅ Methods use the correct camelCase naming (`setUp` / `tearDown`, not `setup` / `teardown`)
-✅ Allows you to automatically fix these issues with the `--fix` flag
+- `setUp` and `tearDown` methods **call `super().setUp()` / `super().tearDown()` as the last statement**
+- Methods use the correct camelCase naming (`setUp` / `tearDown`, not `setup` / `teardown`)
+- Allows you to automatically fix these issues with the `--fix` flag
 
 Built on [Ruff's Python parser](https://github.com/astral-sh/ruff) for fast, reliable parsing.
 
@@ -59,7 +59,7 @@ Or use as a local hook:
 
 ## Examples
 
-### ✅ Valid Code
+### Valid Code
 
 ```python
 class TestExample(unittest.TestCase):
@@ -72,7 +72,7 @@ class TestExample(unittest.TestCase):
         super().tearDown()  # Last statement!
 ```
 
-### ❌ Issues Detected
+### Issues Detected
 
 ```python
 # Missing super() call
