@@ -1,7 +1,7 @@
 // tests/integration.rs
+use pytest_super_hooks::check_file;
 use std::fs::write;
 use tempfile::TempDir;
-use pytest_super_hooks::check_file;
 
 #[test]
 fn valid_teardown() {
@@ -36,4 +36,3 @@ class T:
     .unwrap();
     assert_eq!(check_file(&file_path).len(), 1);
 }
-

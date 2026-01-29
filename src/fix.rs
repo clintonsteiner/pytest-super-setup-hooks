@@ -5,10 +5,10 @@
 //! - Incorrect method naming (setup -> setUp, teardown -> tearDown)
 //! - Missing super() calls (adds them as the last statement)
 
-use std::{fs, path::Path};
-use ruff_python_parser::parse_module;
 use ruff_python_ast::Stmt;
+use ruff_python_parser::parse_module;
 use ruff_text_size::Ranged;
+use std::{fs, path::Path};
 
 /// Attempt to fix setUp/tearDown violations in a Python file.
 ///
@@ -23,9 +23,11 @@ use ruff_text_size::Ranged;
 /// - Adds super().setUp()/super().tearDown() as the last statement if missing
 /// - Preserves all other code and formatting
 pub fn fix_file(path: &Path) -> bool {
-    let Ok(src) = fs::read_to_string(path) else { return false };
+    let Ok(src) = fs::read_to_string(path) else {
+        return false;
+    };
     let Ok(parsed) = parse_module(&src) else {
-        return false
+        return false;
     };
 
     // Convert source to lines for manipulation
@@ -74,7 +76,10 @@ fn fix_stmt(stmt: &Stmt, src: &str, lines: &mut Vec<String>) -> bool {
             }
 
             let start_line = src[..stmt.start().to_usize()].lines().count() - 1;
-            let end_line = src[..func_def.body.last().unwrap().end().to_usize()].lines().count() - 1;
+            let end_line = src[..func_def.body.last().unwrap().end().to_usize()]
+                .lines()
+                .count()
+                - 1;
 
             if start_line >= lines.len() || end_line >= lines.len() {
                 return false;
@@ -82,51 +87,55 @@ fn fix_stmt(stmt: &Stmt, src: &str, lines: &mut Vec<String>) -> bool {
 
             let mut modified = false;
 
-            // First, fix the method name if needed
+            // Fix the method name if needed
             if let Some(new_name) = correct_name {
                 let old_name = func_def.name.as_str();
                 if let Some(line) = lines.get_mut(start_line) {
-                    if line.contains(&format!("def {}(", old_name)) {
-                        *line = line.replace(&format!("def {}(", old_name), &format!("def {}(", new_name));
+                    let old_def = format!("def {}(", old_name);
+                    if line.contains(&old_def) {
+                        *line = line.replace(&old_def, &format!("def {}(", new_name));
                         modified = true;
                     }
                 }
             }
 
-            // Then, add the super call if it's missing
-            let mut filtered: Vec<String> = lines[start_line..=end_line]
+            // Remove super() calls from anywhere in the method body (they'll be added at the end)
+            let mut body_lines: Vec<String> = lines[start_line + 1..=end_line]
                 .iter()
                 .filter(|l| !l.contains("super().setUp()") && !l.contains("super().tearDown()"))
                 .map(|s| s.to_string())
                 .collect();
 
-            // Only add super call if it's not already there
-            let last_in_filtered = filtered.last().map(|l| l.trim()).unwrap_or("");
-            let has_super = last_in_filtered.contains("super().setUp()") || last_in_filtered.contains("super().tearDown()");
+            // Check if super() was on the last line
+            let last_line = &lines[end_line];
+            let had_super_at_end =
+                last_line.contains("super().setUp()") || last_line.contains("super().tearDown()");
 
-            if !has_super {
-                // Get indent from the first line of the function body
-                let body_indent = if start_line + 1 < lines.len() {
-                    lines[start_line + 1]
+            // Add super() call if it wasn't already there or if it wasn't at the end
+            if body_lines.len() < (end_line - start_line) || !had_super_at_end {
+                // Get proper indentation from body
+                let body_indent = if !body_lines.is_empty() {
+                    body_lines[0]
                         .chars()
-                        .take_while(|c: &char| c.is_whitespace())
+                        .take_while(|c| c.is_whitespace())
                         .collect::<String>()
                 } else {
-                    // Fallback: add 4 spaces to the def line indent
-                    let def_indent = lines[start_line]
+                    // Fallback: add 4 spaces
+                    lines[start_line]
                         .chars()
-                        .take_while(|c: &char| c.is_whitespace())
-                        .collect::<String>();
-                    format!("{}    ", def_indent)
+                        .take_while(|c| c.is_whitespace())
+                        .collect::<String>()
+                        + "    "
                 };
 
-                filtered.push(format!("{}{}", body_indent, correct_call));
+                body_lines.push(format!("{}{}", body_indent, correct_call));
                 modified = true;
             }
 
             if modified {
-                lines.splice(start_line..=end_line, filtered);
+                lines.splice(start_line + 1..=end_line, body_lines);
             }
+
             modified
         }
         Stmt::ClassDef(class_def) => {
@@ -141,4 +150,3 @@ fn fix_stmt(stmt: &Stmt, src: &str, lines: &mut Vec<String>) -> bool {
         _ => false,
     }
 }
-

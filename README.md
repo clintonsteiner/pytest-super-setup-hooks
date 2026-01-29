@@ -34,6 +34,19 @@ pytest-super-hooks --fix test_*.py
 
 Add to `.pre-commit-config.yaml`:
 ```yaml
+- repo: https://github.com/yourusername/pytest-super-setup-hooks
+  rev: v1.0.0  # Use the latest version tag
+  hooks:
+    - id: pytest-super-setup
+      name: Check setUp/tearDown methods
+      entry: pytest-super-hooks
+      language: system
+      types: [python]
+      stages: [commit]
+```
+
+Or use as a local hook:
+```yaml
 - repo: local
   hooks:
     - id: pytest-super-setup

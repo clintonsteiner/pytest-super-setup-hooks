@@ -1,6 +1,6 @@
+use pytest_super_hooks::{check_file, fix::fix_file};
 use std::fs::write;
 use tempfile::TempDir;
-use pytest_super_hooks::{check_file, fix::fix_file};
 
 /// Test suite for the --fix functionality
 
@@ -87,8 +87,14 @@ fn fix_super_not_last() {
     assert!(fixed.contains("super().setUp()"));
     // The super call should be after the value assignment
     let lines: Vec<&str> = fixed.lines().collect();
-    let super_idx = lines.iter().position(|l| l.contains("super().setUp()")).unwrap();
-    let value_idx = lines.iter().position(|l| l.contains("self.value = 1")).unwrap();
+    let super_idx = lines
+        .iter()
+        .position(|l| l.contains("super().setUp()"))
+        .unwrap();
+    let value_idx = lines
+        .iter()
+        .position(|l| l.contains("self.value = 1"))
+        .unwrap();
     assert!(super_idx > value_idx);
 }
 

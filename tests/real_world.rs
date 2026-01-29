@@ -1,6 +1,6 @@
+use pytest_super_hooks::check_file;
 use std::fs::write;
 use tempfile::TempDir;
-use pytest_super_hooks::check_file;
 
 /// Test suite with real-world Python test class examples
 

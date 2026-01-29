@@ -4,10 +4,10 @@
 //! This module provides validation that Python test classes correctly implement setUp/tearDown
 //! methods with proper naming (camelCase) and with super() calls as the last statement.
 
-use std::{fs, path::Path};
-use ruff_python_parser::parse_module;
 use ruff_python_ast::Stmt;
+use ruff_python_parser::parse_module;
 use ruff_text_size::Ranged;
+use std::{fs, path::Path};
 
 pub mod fix;
 
@@ -16,9 +16,11 @@ pub mod fix;
 /// Returns a list of error messages, one per violation found.
 /// Returns empty vector if no violations are found.
 pub fn check_file(path: &Path) -> Vec<String> {
-    let Ok(src) = fs::read_to_string(path) else { return vec![] };
+    let Ok(src) = fs::read_to_string(path) else {
+        return vec![];
+    };
     let Ok(parsed) = parse_module(&src) else {
-        return vec![]
+        return vec![];
     };
 
     let mut errors = Vec::new();
@@ -56,9 +58,7 @@ fn check_stmt(stmt: &Stmt, path: &Path, errors: &mut Vec<String>, src: &str) {
                     let expected = func_def.name.as_str();
 
                     if !is_super_call_last(last, expected) {
-                        let line = src[..stmt.start().to_usize()]
-                            .lines()
-                            .count();
+                        let line = src[..stmt.start().to_usize()].lines().count();
                         errors.push(format!(
                             "{}:{} super().{}() must be the last line",
                             path.display(),
@@ -69,9 +69,7 @@ fn check_stmt(stmt: &Stmt, path: &Path, errors: &mut Vec<String>, src: &str) {
                 }
                 "setup" | "teardown" | "Setup" | "Teardown" => {
                     // Flag incorrectly-cased setUp/tearDown methods
-                    let line = src[..stmt.start().to_usize()]
-                        .lines()
-                        .count();
+                    let line = src[..stmt.start().to_usize()].lines().count();
                     errors.push(format!(
                         "{}:{} use correct casing: setUp / tearDown",
                         path.display(),
@@ -108,23 +106,28 @@ fn check_stmt(stmt: &Stmt, path: &Path, errors: &mut Vec<String>, src: &str) {
 fn is_super_call_last(stmt: &Stmt, expected: &str) -> bool {
     use ruff_python_ast::Expr;
 
-    if let Stmt::Expr(expr_stmt) = stmt {
-        // Verify it's a call expression: super().setUp()
-        if let Expr::Call(call_expr) = &*expr_stmt.value {
-            // Verify the function being called is an attribute: super().setUp
-            if let Expr::Attribute(attr_expr) = &*call_expr.func {
-                // Verify the attribute name matches what we expect (setUp or tearDown)
-                if attr_expr.attr.as_str() == expected {
-                    // Verify we're calling super(): super()
-                    if let Expr::Call(super_call) = &*attr_expr.value {
-                        if let Expr::Name(name_expr) = &*super_call.func {
-                            return name_expr.id.as_str() == "super";
-                        }
-                    }
-                }
-            }
-        }
-    }
-    false
-}
+    let Stmt::Expr(expr_stmt) = stmt else {
+        return false;
+    };
+    let Expr::Call(call_expr) = &*expr_stmt.value else {
+        return false;
+    };
+    let Expr::Attribute(attr_expr) = &*call_expr.func else {
+        return false;
+    };
 
+    // Check attribute name matches what we expect (setUp or tearDown)
+    if attr_expr.attr.as_str() != expected {
+        return false;
+    }
+
+    // Check we're calling super().setUp() or super().tearDown()
+    let Expr::Call(super_call) = &*attr_expr.value else {
+        return false;
+    };
+    let Expr::Name(name_expr) = &*super_call.func else {
+        return false;
+    };
+
+    name_expr.id.as_str() == "super"
+}
