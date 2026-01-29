@@ -131,11 +131,12 @@ jobs:
             target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
             target/${{ matrix.target }}/release/${{ matrix.artifact_name }}.sha256
 
-  # Publish: Upload to crates.io
+  # Publish: Upload to crates.io (optional - only if CARGO_TOKEN is set)
   publish-crate:
     name: Publish to crates.io
     runs-on: ubuntu-latest
     needs: build
+    if: secrets.CARGO_TOKEN != ''
     environment:
       name: crates-io
       url: https://crates.io/crates/pytest-super-hooks
@@ -149,11 +150,11 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
 
-  # Release: Create GitHub release with artifacts
+  # Release: Create GitHub release with artifacts (runs after build, optional crates.io publish)
   create-github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: publish-crate
+    needs: build
     environment:
       name: github-release
       url: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}

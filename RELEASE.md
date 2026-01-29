@@ -1,39 +1,48 @@
 # Release Guide
 
+## Quick Start
+
+Use the Makefile to automate the entire release process:
+
+```bash
+make release-patch   # Bump x.y.z → x.y.z+1
+make release-minor   # Bump x.y.z → x.y+1.0
+make release-major   # Bump x.y.z → x+1.0.0
+```
+
+Each command will:
+1. Update `Cargo.toml` with the new version
+2. Update `CHANGELOG.md` with the new version section
+3. Create a git commit with the version bump
+4. Create an annotated git tag
+5. Output instructions to push the release
+
 ## Publishing a New Release
 
 ### Prerequisites
 
-1. Ensure all tests pass locally:
+1. Ensure working directory is clean:
 ```bash
-cargo test
-cargo clippy
-cargo fmt --check
+git status
 ```
 
-2. Update version in `Cargo.toml`:
-```toml
-[package]
-version = "0.2.0"  # Increment version
-```
-
-3. Commit and push the version bump:
+2. Run quality checks:
 ```bash
-git add Cargo.toml
-git commit -m "Bump version to 0.2.0"
-git push
+make check
 ```
 
 ### Creating a Release
 
-1. Create an annotated git tag:
+1. Choose your release type and run:
 ```bash
-git tag -a v0.2.0 -m "Release version 0.2.0"
+make release-patch    # For bug fixes (0.1.0 → 0.1.1)
+make release-minor    # For new features (0.1.0 → 0.2.0)
+make release-major    # For breaking changes (0.1.0 → 1.0.0)
 ```
 
-2. Push the tag:
+2. Follow the printed instructions to push:
 ```bash
-git push origin v0.2.0
+git push && git push origin v0.2.0
 ```
 
 3. GitHub Actions will automatically:
@@ -73,14 +82,39 @@ Users can download these binaries directly instead of compiling from source.
 cargo install pytest-super-hooks
 ```
 
-## Rollback
+## Hotfixes
 
 If issues are found after releasing, create a new patch release:
 
-1. Fix the issue and commit it
-2. Update version in Cargo.toml (e.g., 0.2.0 → 0.2.1)
-3. Tag the new release: `git tag -a v0.2.1 -m "Hotfix: ..."`
-4. Push: `git push origin v0.2.1`
+```bash
+# Fix the issue and commit
+git add <files>
+git commit -m "Fix: ..."
+
+# Create patch release
+make release-patch
+
+# Push when ready
+git push && git push origin v<new-version>
+```
+
+## Manual Release (Advanced)
+
+If you need to release manually without the Makefile:
+
+```bash
+# 1. Update version and CHANGELOG manually
+vi Cargo.toml
+vi CHANGELOG.md
+
+# 2. Commit
+git add Cargo.toml CHANGELOG.md
+git commit -m "Bump version to X.Y.Z"
+
+# 3. Create and push tag
+git tag -a vX.Y.Z -m "Release version X.Y.Z"
+git push && git push origin vX.Y.Z
+```
 
 ## Requirements
 
