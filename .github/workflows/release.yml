@@ -1,14 +1,16 @@
 name: Release
 
-# Only triggered by bump-version workflow via gh workflow run
-# Direct pushes or manual triggers are blocked
 on:
   workflow_dispatch:
     inputs:
-      triggered_by_bump:
-        description: 'Internal flag - set by bump-version workflow only'
+      bump_type:
+        description: 'Version bump type'
         required: true
-        type: string
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -19,84 +21,124 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # Verify this was triggered by bump-version workflow
-  verify-trigger:
-    name: Verify Trigger Source
+  # Prepare: Validate and update files
+  prepare:
+    name: Prepare Release
     runs-on: ubuntu-latest
-    steps:
-      - name: Check if triggered by bump-version
-        run: |
-          TRIGGERED_BY="${{ github.event.inputs.triggered_by_bump }}"
-
-          if [ "$TRIGGERED_BY" != "bump-version" ]; then
-            echo "❌ Release workflow can only be triggered by bump-version"
-            echo "Input received: $TRIGGERED_BY"
-            exit 1
-          fi
-
-          echo "✅ Verified: Triggered by bump-version workflow"
-
-  # Guard: Validate version consistency
-  validate-version:
-    needs: verify-trigger
-    name: Validate Version
-    runs-on: ubuntu-latest
+    if: github.actor == github.repository_owner
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.validate.outputs.version }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Extract tag version
-        id: tag_version
+      - name: Calculate new version
+        id: validate
         run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
-          echo "Tag version: $TAG_VERSION"
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          CURRENT=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\([^"]*\)".*/\1/')
 
-      - name: Extract Cargo.toml version
-        id: cargo_version
-        run: |
-          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\([^"]*\)".*/\1/')
-          echo "version=$CARGO_VERSION" >> $GITHUB_OUTPUT
-          echo "Cargo.toml version: $CARGO_VERSION"
+          echo "Current version: $CURRENT"
+          echo "Bump type: $BUMP_TYPE"
 
-      - name: Validate versions match
-        run: |
-          TAG_VERSION="${{ steps.tag_version.outputs.version }}"
-          CARGO_VERSION="${{ steps.cargo_version.outputs.version }}"
+          # Parse version into components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
 
-          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "❌ Version mismatch!"
-            echo "Git tag version: $TAG_VERSION"
-            echo "Cargo.toml version: $CARGO_VERSION"
+          case "$BUMP_TYPE" in
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+          esac
+
+          VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Failed to calculate version"
             exit 1
           fi
 
-          echo "✅ Versions match: $TAG_VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Calculated new version: $VERSION ($BUMP_TYPE bump)"
 
-      - name: Validate semantic versioning
+      - name: Configure git
         run: |
-          VERSION="${{ steps.tag_version.outputs.version }}"
-          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$ ]]; then
-            echo "❌ Invalid semantic version: $VERSION"
-            exit 1
-          fi
-          echo "✅ Valid semantic version: $VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Check CHANGELOG updated
+      - name: Update Cargo.toml
         run: |
-          VERSION="${{ steps.tag_version.outputs.version }}"
-          if ! grep -q "\[$VERSION\]" CHANGELOG.md; then
-            echo "❌ CHANGELOG.md not updated with version $VERSION"
-            echo "Please add an entry for [$VERSION] to CHANGELOG.md"
-            exit 1
-          fi
-          echo "✅ CHANGELOG.md contains version $VERSION"
+          VERSION="${{ steps.validate.outputs.version }}"
+          CURRENT=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\([^"]*\)".*/\1/')
+          sed -i.bak "s/^version = \"$CURRENT\"/version = \"$VERSION\"/" Cargo.toml
+          rm -f Cargo.toml.bak
+          echo "✅ Updated Cargo.toml to version $VERSION"
+
+      - name: Update CHANGELOG.md
+        run: |
+          VERSION="${{ steps.validate.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+          REPO="${{ github.repository }}"
+
+          # Add new version section after [Unreleased]
+          awk -v v="$VERSION" -v d="$DATE" '
+          /^## \[Unreleased\]/ && !found {
+              print
+              print ""
+              print "## [" v "] - " d
+              found=1
+              next
+          }
+          { print }
+          ' CHANGELOG.md > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
+
+          # Add version link in footer
+          awk -v v="$VERSION" -v r="$REPO" '
+          /^\[Unreleased\]:/ {
+              print
+              print "[" v "]: https://github.com/" r "/releases/tag/v" v
+              next
+          }
+          { print }
+          ' CHANGELOG.md > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
+
+          echo "✅ Updated CHANGELOG.md"
+
+      - name: Commit and tag
+        run: |
+          VERSION="${{ steps.validate.outputs.version }}"
+          TAG="v${VERSION}"
+
+          git add Cargo.toml CHANGELOG.md
+          git commit -m "Release version $VERSION"
+          echo "✅ Created commit"
+
+          git tag -a "$TAG" -m "Release version $VERSION"
+          echo "✅ Created tag: $TAG"
+
+      - name: Push to repository
+        run: |
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          git push origin "$BRANCH"
+          git push origin --tags
+          echo "✅ Pushed commits and tags"
 
   # Guard: Run all quality checks
   quality-checks:
     name: Quality Checks
-    needs: validate-version
+    needs: prepare
+    if: github.actor == github.repository_owner
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
@@ -105,6 +147,7 @@ jobs:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     needs: quality-checks
+    if: github.actor == github.repository_owner
     strategy:
       matrix:
         include:
@@ -163,10 +206,11 @@ jobs:
   create-github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [prepare, build]
+    if: github.actor == github.repository_owner
     environment:
       name: github-release
-      url: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+      url: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare.outputs.version }}
     steps:
       - uses: actions/checkout@v6
       - name: Download artifacts
@@ -175,7 +219,7 @@ jobs:
       - name: Generate release notes
         id: release_notes
         run: |
-          VERSION="${{ needs.validate-version.outputs.version }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
           echo "Extracting release notes for version $VERSION"
 
           # Extract section from CHANGELOG
@@ -187,7 +231,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          VERSION="${{ needs.validate-version.outputs.version }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
           OWNER="${{ github.repository_owner }}"
           REPO_NAME="${{ github.event.repository.name }}"
           REPO="${{ github.repository }}"
