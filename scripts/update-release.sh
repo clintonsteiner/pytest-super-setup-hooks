@@ -10,8 +10,9 @@ CURRENT="$1"
 VERSION="$2"
 DATE=$(date +%Y-%m-%d)
 
-# Update Cargo.toml
-sed -i '' "s/^version = \"$CURRENT\"/version = \"$VERSION\"/" Cargo.toml
+# Update Cargo.toml (works on both macOS and Linux)
+sed -i.bak "s/^version = \"$CURRENT\"/version = \"$VERSION\"/" Cargo.toml
+rm -f Cargo.toml.bak
 echo "✓ Updated Cargo.toml"
 
 # Create temporary files for CHANGELOG manipulation
