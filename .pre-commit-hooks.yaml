@@ -3,9 +3,11 @@
   entry: pytest-super-hooks
   language: python
   types: [python]
+  require_serial: false
 
 - id: pytest-super-setup-fix
   name: Fix setUp/tearDown methods
   entry: pytest-super-hooks --fix
   language: python
   types: [python]
+  require_serial: false
