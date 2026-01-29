@@ -1,0 +1,20 @@
+[package]
+name = "pytest-super-hooks"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "pytest-super-hooks"
+path = "src/main.rs"
+
+[lib]
+name = "pytest_super_hooks"
+path = "src/lib.rs"
+
+[dependencies]
+ruff_python_parser = { git = "https://github.com/astral-sh/ruff.git" }
+ruff_python_ast = { git = "https://github.com/astral-sh/ruff.git" }
+ruff_text_size = { git = "https://github.com/astral-sh/ruff.git" }
+
+[dev-dependencies]
+tempfile = "3"
