@@ -1,0 +1,13 @@
+- id: pytest-super-setup
+  name: Check setUp/tearDown methods
+  entry: pytest-super-hooks
+  language: rust
+  types: [python]
+  stages: [commit]
+
+- id: pytest-super-setup-fix
+  name: Fix setUp/tearDown methods
+  entry: pytest-super-hooks --fix
+  language: rust
+  types: [python]
+  stages: [commit]

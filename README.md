@@ -14,13 +14,13 @@ Built on [Ruff's Python parser](https://github.com/astral-sh/ruff) for fast, rel
 
 ## Quick Start
 
-### Installation
+### Installation (for standalone usage)
 
 ```bash
 cargo install --path .
 ```
 
-### Basic Usage
+### Basic Usage (standalone)
 
 ```bash
 # Check files for issues
@@ -32,30 +32,27 @@ pytest-super-hooks --fix test_*.py
 
 ### Use as Pre-Commit Hook
 
-Add to `.pre-commit-config.yaml`:
+Add to `.pre-commit-config.yaml` (pre-commit will automatically build and run the binary):
+
+**Option 1: Check mode (fail on violations)**
 ```yaml
-- repo: https://github.com/yourusername/pytest-super-setup-hooks
-  rev: v1.0.0  # Use the latest version tag
+- repo: https://github.com/clintonsteiner/pytest-super-setup-hooks
+  rev: v0.11.0
   hooks:
     - id: pytest-super-setup
-      name: Check setUp/tearDown methods
-      entry: pytest-super-hooks
-      language: system
-      types: [python]
-      stages: [commit]
 ```
 
-Or use as a local hook:
+**Option 2: Auto-fix mode (automatically fix violations)**
 ```yaml
-- repo: local
+- repo: https://github.com/clintonsteiner/pytest-super-setup-hooks
+  rev: v0.11.0
   hooks:
-    - id: pytest-super-setup
-      name: Check setUp/tearDown methods
-      entry: pytest-super-hooks
-      language: system
-      types: [python]
-      stages: [commit]
+    - id: pytest-super-setup-fix
 ```
+
+Available hook IDs:
+- `pytest-super-setup` - Check mode (report violations, exit with code 1)
+- `pytest-super-setup-fix` - Auto-fix mode (automatically correct violations)
 
 ## Examples
 
