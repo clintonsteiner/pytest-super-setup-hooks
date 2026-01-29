@@ -131,12 +131,11 @@ jobs:
             target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
             target/${{ matrix.target }}/release/${{ matrix.artifact_name }}.sha256
 
-  # Publish: Upload to crates.io (optional - only if CARGO_TOKEN is set)
+  # Publish: Upload to crates.io (optional - only if CARGO_TOKEN is configured)
   publish-crate:
     name: Publish to crates.io
     runs-on: ubuntu-latest
     needs: build
-    if: secrets.CARGO_TOKEN != ''
     environment:
       name: crates-io
       url: https://crates.io/crates/pytest-super-hooks
@@ -145,10 +144,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - name: Publish
+      - name: Publish to crates.io
+        if: env.CARGO_TOKEN != ''
         run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+
+      - name: Skip publish (CARGO_TOKEN not configured)
+        if: env.CARGO_TOKEN == ''
+        run: |
+          echo "⚠️  Skipping crates.io publish - CARGO_TOKEN not configured"
+          echo ""
+          echo "To enable automatic publishing to crates.io:"
+          echo "1. Get token from https://crates.io/me (Account Settings → API Tokens)"
+          echo "2. Add to repository: Settings → Secrets and Variables → Actions → CARGO_TOKEN"
 
   # Release: Create GitHub release with artifacts (runs after build, optional crates.io publish)
   create-github-release:
