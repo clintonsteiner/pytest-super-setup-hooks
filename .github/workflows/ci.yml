@@ -1,8 +1,5 @@
 name: CI
 
-permissions:
-  contents: read
-
 on:
   push:
     branches:
@@ -15,9 +12,6 @@ on:
       - main
       - master
   workflow_call:
-
-permissions:
-  contents: read
 
 env:
   CARGO_TERM_COLOR: always
