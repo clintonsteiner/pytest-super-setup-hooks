@@ -166,10 +166,13 @@ jobs:
         run: |
           set -e
           VERSION="${{ needs.validate-version.outputs.version }}"
-          RELEASE_TAG="v${VERSION}"
+          OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
           REPO="${{ github.repository }}"
+          RELEASE_TAG="v${VERSION}"
+          RELEASE_NAME="${OWNER}/${REPO_NAME} v${VERSION}"
 
-          echo "Processing release for ${RELEASE_TAG}..."
+          echo "Processing release: ${RELEASE_NAME}..."
 
           # Try to get existing release
           EXISTING_RELEASE=$(curl -s \
@@ -188,7 +191,7 @@ jobs:
               -H "Authorization: token ${GITHUB_TOKEN}" \
               -H "Content-Type: application/json" \
               "https://api.github.com/repos/${REPO}/releases" \
-              -d "{\"tag_name\":\"${RELEASE_TAG}\",\"name\":\"Release ${VERSION}\",\"body\":\"${RELEASE_BODY}\",\"draft\":false,\"prerelease\":false}")
+              -d "{\"tag_name\":\"${RELEASE_TAG}\",\"name\":\"${RELEASE_NAME}\",\"body\":\"${RELEASE_BODY}\",\"draft\":false,\"prerelease\":false}")
 
             RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
 
