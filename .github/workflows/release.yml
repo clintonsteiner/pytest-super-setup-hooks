@@ -127,9 +127,8 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.asset_name }}
-          path: |
-            target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-            target/${{ matrix.target }}/release/${{ matrix.artifact_name }}.sha256
+          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}*
+          if-no-files-found: error
 
   # Publish: Upload to crates.io (optional - only if CARGO_TOKEN is configured)
   publish-crate:
