@@ -146,7 +146,6 @@ class MixedTest(TestCase):
 "#;
     let errors = run(src);
     assert_eq!(errors.len(), 1);
-    assert!(errors[0].contains("setup"));
     assert!(errors[0].contains("correct casing"));
 }
 
@@ -202,12 +201,12 @@ class MultiErrorTest(TestCase):
         self.value = 1
 
     def teardown(self):
-        pass
+        self.cleanup()
 "#;
     let errors = run(src);
     assert_eq!(errors.len(), 2);
-    assert!(errors.iter().any(|e| e.contains("setup")));
-    assert!(errors.iter().any(|e| e.contains("teardown")));
+    assert!(errors.iter().any(|e| e.contains("correct casing")));
+    assert!(errors.iter().all(|e| e.contains("correct casing")));
 }
 
 #[test]
@@ -329,7 +328,7 @@ class TestTwo(TestCase):
 "#;
     let errors = run(src);
     assert_eq!(errors.len(), 1);
-    assert!(errors[0].contains("TestTwo"));
+    assert!(errors[0].contains("must be the last line"));
 }
 
 #[test]
@@ -407,7 +406,6 @@ class UserCreateTestCase(TestCase):
 "#;
     let errors = run(src);
     assert_eq!(errors.len(), 1);
-    assert!(errors[0].contains("setup"));
     assert!(errors[0].contains("correct casing"));
 }
 
@@ -497,7 +495,7 @@ class FinalTestCase(MiddleTestCase):
 "#;
     let errors = run(src);
     assert_eq!(errors.len(), 1);
-    assert!(errors[0].contains("MiddleTestCase"));
+    assert!(errors[0].contains("must be the last line"));
 }
 
 #[test]

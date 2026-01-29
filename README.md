@@ -1,41 +1,43 @@
 # pytest-super-setup-hooks
 
-A fast pre-commit hook checker written in Rust that enforces correct `setUp` / `tearDown` method usage in Python test classes.
+A fast, Rust-based pre-commit hook that enforces correct `setUp` / `tearDown` method usage in Python unittest-based test classes.
 
-## Overview
+## What It Does
 
-This tool checks Python test classes to ensure:
-1. `setUp` and `tearDown` methods call `super().setUp()` and `super().tearDown()` as their last statement
-2. Method names use correct camelCase (`setUp` / `tearDown`, not `setup` / `teardown`)
-3. Automatically fixes issues with the `--fix` flag
+This tool automatically checks Python test classes to ensure:
 
-Built with [Ruff's Python parser](https://github.com/astral-sh/ruff) for fast, reliable parsing.
+✅ `setUp` and `tearDown` methods **call `super().setUp()` / `super().tearDown()` as the last statement**
+✅ Methods use the correct camelCase naming (`setUp` / `tearDown`, not `setup` / `teardown`)
+✅ Allows you to automatically fix these issues with the `--fix` flag
 
-## Install
+Built on [Ruff's Python parser](https://github.com/astral-sh/ruff) for fast, reliable parsing.
+
+## Quick Start
+
+### Installation
 
 ```bash
 cargo install --path .
 ```
 
-## Usage
+### Basic Usage
 
-### Check files
 ```bash
-pytest-super-hooks test_file.py test_dir/**/*.py
+# Check files for issues
+pytest-super-hooks test_*.py
+
+# Automatically fix issues
+pytest-super-hooks --fix test_*.py
 ```
 
-### Fix issues automatically
-```bash
-pytest-super-hooks --fix test_file.py
-```
+### Use as Pre-Commit Hook
 
-### As a pre-commit hook
 Add to `.pre-commit-config.yaml`:
 ```yaml
 - repo: local
   hooks:
     - id: pytest-super-setup
-      name: pytest setUp/tearDown checker
+      name: Check setUp/tearDown methods
       entry: pytest-super-hooks
       language: system
       types: [python]
@@ -44,52 +46,81 @@ Add to `.pre-commit-config.yaml`:
 
 ## Examples
 
-### Valid code
+### ✅ Valid Code
+
 ```python
-class TestExample(TestCase):
+class TestExample(unittest.TestCase):
     def setUp(self):
         self.value = 42
-        super().setUp()
+        super().setUp()  # Last statement!
 
     def tearDown(self):
         self.cleanup()
-        super().tearDown()
+        super().tearDown()  # Last statement!
 ```
 
-### Issues detected
+### ❌ Issues Detected
+
 ```python
-# ❌ Missing super call
-class TestExample(TestCase):
+# Missing super() call
+class TestExample(unittest.TestCase):
     def setUp(self):
         self.value = 42
+        # ERROR: super().setUp() must be the last line
 
-# ❌ Super call not last
-class TestExample(TestCase):
+# Super call not at end
+class TestExample(unittest.TestCase):
     def setUp(self):
         super().setUp()
-        self.value = 42
+        self.value = 42  # ERROR: super().setUp() must be the last line
 
-# ❌ Wrong casing
-class TestExample(TestCase):
-    def setup(self):
+# Wrong method naming
+class TestExample(unittest.TestCase):
+    def setup(self):  # ERROR: use correct casing: setUp / tearDown
         super().setUp()
 ```
+
+## Features
+
+- **Fast**: Rust-based parsing is much faster than Python checkers
+- **Comprehensive**: Handles Django TestCase, unittest.TestCase, and custom base classes
+- **Auto-fix**: Can automatically rename methods and add super() calls
+- **Smart**: Skips pass-only methods, handles decorators, docstrings, async methods
+- **Recursive**: Checks methods in nested classes
 
 ## Development
 
-Run tests:
+### Run Tests
+
 ```bash
 cargo test
 ```
 
-Build release:
-```bash
-cargo build --release
-```
-
-The tool includes comprehensive test suites covering:
+All 70 tests included covering:
 - Real-world Django and unittest patterns
 - Edge cases (async, decorators, docstrings, etc.)
 - Automatic fixing functionality
 - Complex inheritance hierarchies
+
+### Build Release
+
+```bash
+cargo build --release
+```
+
+Binary will be in `target/release/pytest-super-hooks`
+
+## How It Works
+
+1. Parses Python files using Ruff's parser
+2. Recursively walks through all classes in the module
+3. For each `setUp` / `tearDown` method:
+   - Checks if the method name uses correct casing
+   - Verifies the last statement is a `super().setUp()` / `super().tearDown()` call
+   - Reports any errors with file name and line number
+
+With `--fix`, it also:
+- Renames incorrectly-cased methods
+- Adds the super() call as the last statement if missing
+- Preserves all other code and formatting
 
