@@ -3,15 +3,19 @@ name: CI
 on:
   push:
     branches:
-      - main
       - master
     tags:
       - 'v*'
   pull_request:
     branches:
-      - main
       - master
   workflow_call:
+    inputs:
+      run-extended-tests:
+        description: 'Run extended tests across multiple OS'
+        required: false
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -48,10 +52,10 @@ jobs:
       - name: Check formatting
         run: cargo fmt -- --check
 
-  # Extended testing - on release tags, pushes to main, and when called from other workflows
+  # Extended testing - on release tags, pushes to master, and when called with run-extended-tests input
   extended-test:
     name: Extended Tests
-    if: (github.event_name == 'push' && (contains(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || github.event_name == 'workflow_call'
+    if: (github.event_name == 'push' && (contains(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master')) || inputs.run-extended-tests
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

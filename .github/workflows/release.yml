@@ -140,6 +140,8 @@ jobs:
     needs: prepare
     if: github.actor == github.repository_owner
     uses: ./.github/workflows/ci.yml
+    with:
+      run-extended-tests: true
     secrets: inherit
 
   # Build phase: Create binaries
